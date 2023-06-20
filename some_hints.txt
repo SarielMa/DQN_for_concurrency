@@ -1,0 +1,70 @@
+1. remmember to use command line to run image. otherwise the cantainer may close quickly;
+"sudo docker run --privileged -it period:latest /bin/bash"
+
+how to run tasn:
+clang++ -fsanitize=thread -g -o thread test_try2_gen.cpp
+./thread
+
+output will be: 
+==================
+WARNING: ThreadSanitizer: data race (pid=42631)
+  Write of size 8 at 0x0000011947e0 by thread T2:
+    #0 WorkStealQueue::Pop(int&) /workdir/PERIOD/test/mars/./WorkStealQueue2.h:150:9 (thread+0x4b4961)
+    #1 thrd2(void*) /workdir/PERIOD/test/mars/test_try2_gen.cpp:58:23 (thread+0x4b4153)
+
+  Previous read of size 8 at 0x0000011947e0 by thread T1 (mutexes: write M9):
+    #0 WorkStealQueue::Steal(int&) /workdir/PERIOD/test/mars/./WorkStealQueue2.h:125:12 (thread+0x4b47ee)
+    #1 thrd1(void*) /workdir/PERIOD/test/mars/test_try2_gen.cpp:50:23 (thread+0x4b40b0)
+
+  Location is global 'var0' of size 72 at 0x0000011947b0 (thread+0x0000011947e0)
+
+  Mutex M9 (0x0000011947b0) created at:
+    #0 pthread_mutex_init /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:1220:3 (thread+0x425c4d)
+    #1 SpinLock::SpinLock(long) /workdir/PERIOD/test/mars/./Spin_lock.h:18:4 (thread+0x4b4c38)
+    #2 WorkStealQueue::WorkStealQueue() /workdir/PERIOD/test/mars/./WorkStealQueue2.h:79:3 (thread+0x4b45e4)
+    #3 __cxx_global_var_init.1 /workdir/PERIOD/test/mars/test_try2_gen.cpp:6:16 (thread+0x41ce7a)
+    #4 _GLOBAL__sub_I_test_try2_gen.cpp /workdir/PERIOD/test/mars/test_try2_gen.cpp (thread+0x41ceef)
+    #5 __libc_csu_init <null> (thread+0x4b547c)
+
+  Thread T2 (tid=42634, running) created by main thread at:
+    #0 pthread_create /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:962:3 (thread+0x4246cb)
+    #1 main /workdir/PERIOD/test/mars/test_try2_gen.cpp:106:4 (thread+0x4b4537)
+
+  Thread T1 (tid=42633, finished) created by main thread at:
+    #0 pthread_create /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:962:3 (thread+0x4246cb)
+    #1 main /workdir/PERIOD/test/mars/test_try2_gen.cpp:105:4 (thread+0x4b451e)
+
+SUMMARY: ThreadSanitizer: data race /workdir/PERIOD/test/mars/./WorkStealQueue2.h:150:9 in WorkStealQueue::Pop(int&)
+==================
+==================
+WARNING: ThreadSanitizer: data race (pid=42631)
+  Read of size 8 at 0x0000011947d8 by thread T2:
+    #0 WorkStealQueue::Pop(int&) /workdir/PERIOD/test/mars/./WorkStealQueue2.h:155:8 (thread+0x4b497b)
+    #1 thrd2(void*) /workdir/PERIOD/test/mars/test_try2_gen.cpp:58:23 (thread+0x4b4153)
+
+  Previous write of size 8 at 0x0000011947d8 by thread T1 (mutexes: write M9):
+    #0 WorkStealQueue::Steal(int&) /workdir/PERIOD/test/mars/./WorkStealQueue2.h:120:9 (thread+0x4b47cc)
+    #1 thrd1(void*) /workdir/PERIOD/test/mars/test_try2_gen.cpp:50:23 (thread+0x4b40b0)
+
+  Location is global 'var0' of size 72 at 0x0000011947b0 (thread+0x0000011947d8)
+
+  Mutex M9 (0x0000011947b0) created at:
+    #0 pthread_mutex_init /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:1220:3 (thread+0x425c4d)
+    #1 SpinLock::SpinLock(long) /workdir/PERIOD/test/mars/./Spin_lock.h:18:4 (thread+0x4b4c38)
+    #2 WorkStealQueue::WorkStealQueue() /workdir/PERIOD/test/mars/./WorkStealQueue2.h:79:3 (thread+0x4b45e4)
+    #3 __cxx_global_var_init.1 /workdir/PERIOD/test/mars/test_try2_gen.cpp:6:16 (thread+0x41ce7a)
+    #4 _GLOBAL__sub_I_test_try2_gen.cpp /workdir/PERIOD/test/mars/test_try2_gen.cpp (thread+0x41ceef)
+    #5 __libc_csu_init <null> (thread+0x4b547c)
+
+  Thread T2 (tid=42634, running) created by main thread at:
+    #0 pthread_create /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:962:3 (thread+0x4246cb)
+    #1 main /workdir/PERIOD/test/mars/test_try2_gen.cpp:106:4 (thread+0x4b4537)
+
+  Thread T1 (tid=42633, finished) created by main thread at:
+    #0 pthread_create /home/brian/src/final/llvm-project/compiler-rt/lib/tsan/rtl/tsan_interceptors_posix.cpp:962:3 (thread+0x4246cb)
+    #1 main /workdir/PERIOD/test/mars/test_try2_gen.cpp:105:4 (thread+0x4b451e)
+
+SUMMARY: ThreadSanitizer: data race /workdir/PERIOD/test/mars/./WorkStealQueue2.h:155:8 in WorkStealQueue::Pop(int&)
+==================
+thread: ./WorkStealQueue2.h:281: void WorkStealQueue::SyncPush(int): Assertion `newsize < MaxSize' failed.
+Aborted

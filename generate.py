@@ -1,5 +1,6 @@
 import os
-import commands
+#import commands
+import subprocess
 import argparse
 
 if __name__ == "__main__":
@@ -28,6 +29,6 @@ if __name__ == "__main__":
     os.system(build)
     run = "/workdir/PERIOD/tool/DBDS/run_PDS.py -y -d  3 /workdir/PERIOD/test/mars/test_try2_gen"
     os.system(run)
-    #output = commands.getoutput(run)
-    #print(output)
+    output = subprocess.getoutput(run)
+    print(output)
     
