@@ -17,21 +17,24 @@ if __name__ == "__main__":
     container = client.containers.get(containerId)
     #print(container.logs())
     #run = "python /workdir/test.py --suffix_labels1=\"1,0;1,0;0,0;1,0;0,0;0,0\" --suffix_labels2=\"0,0;1,0;0,0;1,0;1,0;1,0\""
-    run = "python /workdir/test.py --suffix_labels1=\""
+    run = "python /workdir/PERIOD/test/mars/test.py --suffix_labels1=\""
     run += args.suffix_labels1
     run += "\" --suffix_labels2=\""
     run += args.suffix_labels2
     run += "\""
+    #run = "./workdir/PERIOD/test/mars/thread"
+    #run = "ls /workdir/PERIOD/test/mars/"
+    #run = "pwd"
     ping = container.exec_run(run)
     print ("ping is ", ping)
     lines = ping.output.decode("utf-8").split("\n")
     print ("lines ", lines)
     #lines = ping.split("\n")
     for line in lines :
-        if line.find("Error")>=0 and line.find("Interleavings")>=0 :
-            #print(line)
-            nums = line.split(" ")
-            print(nums[3])
+        #if line.find("Error")>=0 and line.find("Interleavings")>=0 :
+        print(line)
+            #nums = line.split(" ")
+            #print(nums[3])
             
             
 #build = "clang++ -fsanitize=thread -g -o thread{} test_try2_gen.cpp".format(num)
