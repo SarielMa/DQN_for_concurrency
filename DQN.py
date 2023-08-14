@@ -15,7 +15,9 @@ class DQN(nn.Module):
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
+        #x = nn.BatchNorm1d(x.shape[0])
         x = torch.relu(self.fc2(x))
+        #x = nn.BatchNorm1d(x.shape[0])
         x = self.fc3(x)
         return x
 
@@ -37,6 +39,7 @@ class DQNAgent:
         self.loss_fn = nn.MSELoss()
 
     def act(self, state):
+        # epsilon greedy is applied
         if np.random.rand() < self.epsilon:
             return np.random.randint(self.action_dim)
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
@@ -97,17 +100,20 @@ if __name__ == "__main__":
     agent = DQNAgent(state_dim, action_dim, lr, gamma, epsilon)
     replay_buffer = ReplayBuffer(10000)
     batch_size = 32
-    num_episodes = 2000
+    num_episodes = 200 # should be 2000 here.
     for episode in range(num_episodes):
         state = env.reset()
         episode_reward = 0
+        num_iter = 0
         while True:
-            action = agent.act(state)
+            action = agent.act(state) # action space is , for wsq, 3x2x8
             next_state, reward, done = env.step(action)
             replay_buffer.add(state, action, reward, next_state, done)
             agent.train(replay_buffer, batch_size)
             state = next_state
             episode_reward += reward
+            num_iter += 1
             if done:
                 break
-        print("Episode: {}, Reward: {}".format(episode, episode_reward))
+        print("Episode: {}, Reward: {}, num of iter: {}".format(episode, episode_reward, num_iter))
+        print ("Total races discovered in this epoch is ", str(len(env.discovered_dataraces)))

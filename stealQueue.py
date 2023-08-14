@@ -11,38 +11,67 @@ class stealQueue(object):
         super(stealQueue, self).__init__()
         #self.queue1 = [0,0,0,0,0,0,0,0]
         #self.queue2 = [0,0,0,0,0,0,0,0]
-
+        self.sequence_len = 8
         self.max_action = 3
-        self.queue1 = [random.randint(0, self.max_action - 1) for _ in range(8)]
-        self.queue2 = [random.randint(0, self.max_action - 1) for _ in range(8)]
+        self.queue1 = [random.randint(0, self.max_action - 1) for _ in range(self.sequence_len)]
+        self.queue2 = [random.randint(0, self.max_action - 1) for _ in range(self.sequence_len)]
 
         #self.action_space = [0,1,2,3,4,5,6,7]
-        self.n_actions = len(self.queue1) # length of the queries
-        self.n_features = len(self.queue1) * 2  # state/observation 
-        self.max_step = 10 # number of iters in each epoch
+        self.n_actions = self.sequence_len * 2 * self.max_action # length of the queries
+        self.n_features = self.sequence_len * 2  # state/observation , for this, it is the binary sequence in the test case
+        # I want to encode all the existing sequence as the state... how?
+        self.max_step = 50 # upper bound of number of iters in each epoch
         self.steps = 0 # counter
+        self.step_in_vain = 0 # count how many continuous steps with no new races
         client = docker.from_env()
         containerId = "ef22199e51c69421943234a98110001fa6ac37a94521367b4621554b3846e0f9"
         self.container = client.containers.get(containerId)
-        self.someReword = {}
+        self.discovered_dataraces = set() # the full-picture of data races,  a set
         
+    def get_next_state(self, action):
+        # this version, the action is to change a function on one position
+        tid = action // (self.sequence_len * self.max_action) # for here, 0 or 1
+        action -= tid * self.sequence_len * self.max_action
+        position = action // self.max_action
+        function = action % self.max_action
+        if tid == 0:
+            self.queue1[position] = function
+        else:
+            self.queue2[position] = function
+        state = (self.queue1 + self.queue2)
+        return [item / self.max_action for item in state] # just put them to 0 ~ 1 range
 
     def step(self, action):
+        # get the reward in this function
         self.steps += 1
-        self.queue2[action] = (self.queue2[action] + 1)%self.max_action
+        #self.queue2[action] = (self.queue2[action] + 1) % self.max_action # why only q2 is changed?
+        #self.queue2[action] = ?
         #当前状态 归一化
-        state = (self.queue1 + self.queue2) 
-        state_ = [item/self.max_action for item in state]
-        tupleS = tuple(state_)
-        if self.someReword.get(tupleS) is not None: # this can be removed 
-            reward = self.someReword[tupleS]
-        else :
-            reward = self.getReward_tasn() # remove the duplicates
-            self.someReword[tupleS] = reward
+        #state = (self.queue1 + self.queue2) 
+        #state_ = [item/self.max_action for item in state]
+        state_ = self.get_next_state(action)
+        # get the reward for this case
+        new_races = self.getReward_tasn() # this return is a key-value pair, key is the race id
+        new_races = set(new_races.keys())
+        reward = 0
+        diff = new_races - self.discovered_dataraces
+        if len(diff) > 0:
+            reward = len(diff) # newly found races are the reward
+            self.discovered_dataraces = self.discovered_dataraces.union(new_races) # update the discovered races
+            self.step_in_vain = 0
+        else:
+            # no new races detected, negative 
+            inverse_diff = self.discovered_dataraces - new_races
+            reward = -1 * len(inverse_diff)
+            self.step_in_vain += 1
+
+        # detemine if this should end 
         end = False
-        if self.steps >= self.max_step :
+        if  self.step_in_vain == 10 or self.steps == self.max_step:
             end = True
             self.steps = 0
+            self.step_in_vain = 0
+
         return state_, reward, end
     
     def getReward_tasn(self) :
@@ -95,16 +124,17 @@ class stealQueue(object):
             elif warnFlag in words:
                 flag = 1
 
-        return len(dataRace)
-       
+        return dataRace # this is a dict
+      
     def reset(self) :
-        self.queue1 = [random.randint(0,1) for _ in range(8)]
-        self.queue2 = [random.randint(0,1) for _ in range(8)]
+        self.queue1 = [random.randint(0,1) for _ in range(self.sequence_len)]
+        self.queue2 = [random.randint(0,1) for _ in range(self.sequence_len)]
         self.steps = 0
         state = (self.queue1 + self.queue2)
         state_ = [item/self.max_action for item in state]
+        #self.discovered_dataraces = set()
         return state_
-    
+    """
     def getReward(self) :
         #defult: python dockerTest.py --suffix_labels1=\"1,0;1,0;0,0;1,0;0,0;0,0\" --suffix_labels2=\"0,0;1,0;0,0;1,0;1,0;1,0\"
         run = "python /workdir/PERIOD/test/mars/test_Peroid.py --suffix_labels1=\""
@@ -134,7 +164,7 @@ class stealQueue(object):
                 reward = nums[3]
                 break
         return int(reward)
-    
+        """
 
 
 
