@@ -8,18 +8,22 @@ import random
 # Define the DQN network
 class DQN(nn.Module):
     def __init__(self, state_dim, action_dim):
-        super(DQN, self).__init__()
+        super(DQN, self).__init__() # batch x channelx w x... (32 x 16) 16
         self.fc1 = nn.Linear(state_dim, 64)
+        self.bn1 = nn.BatchNorm1d(64)
         self.fc2 = nn.Linear(64, 64)
+        self.fc21 = nn.Linear(64, 64)
+        self.bn2 = nn.BatchNorm1d(64)
         self.fc3 = nn.Linear(64, action_dim)
 
     def forward(self, x):
+        #x = torch.relu(self.bn1(self.fc1(x)))
         x = torch.relu(self.fc1(x))
-        #x = nn.BatchNorm1d(x.shape[0])
+        #x = torch.relu(self.bn2(self.fc2(x)))
         x = torch.relu(self.fc2(x))
-        #x = nn.BatchNorm1d(x.shape[0])
+        #x = torch.relu(self.fc21(x))
         x = self.fc3(x)
-        return x
+        return x # 8 x 2 x 3 = 48 
 
 # Define the DQN agent
 class DQNAgent:
@@ -96,7 +100,7 @@ if __name__ == "__main__":
     action_dim = env.n_actions
     lr = 1e-3
     gamma = 0.99
-    epsilon = 0.1
+    epsilon = 0.2
     agent = DQNAgent(state_dim, action_dim, lr, gamma, epsilon)
     replay_buffer = ReplayBuffer(10000)
     batch_size = 32
@@ -116,4 +120,4 @@ if __name__ == "__main__":
             if done:
                 break
         print("Episode: {}, Reward: {}, num of iter: {}".format(episode, episode_reward, num_iter))
-        print ("Total races discovered in this epoch is ", str(len(env.discovered_dataraces)))
+        print ("Total races discovered is ", str(len(env.discovered_dataraces)))

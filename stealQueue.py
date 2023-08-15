@@ -17,8 +17,10 @@ class stealQueue(object):
         self.queue2 = [random.randint(0, self.max_action - 1) for _ in range(self.sequence_len)]
 
         #self.action_space = [0,1,2,3,4,5,6,7]
+        # try increasing steps
         self.n_actions = self.sequence_len * 2 * self.max_action # length of the queries
         self.n_features = self.sequence_len * 2  # state/observation , for this, it is the binary sequence in the test case
+        #[1,2,...8][2,3,..9]...[12,...x] => [1...1] 
         # I want to encode all the existing sequence as the state... how?
         self.max_step = 50 # upper bound of number of iters in each epoch
         self.steps = 0 # counter
@@ -27,9 +29,11 @@ class stealQueue(object):
         containerId = "ef22199e51c69421943234a98110001fa6ac37a94521367b4621554b3846e0f9"
         self.container = client.containers.get(containerId)
         self.discovered_dataraces = set() # the full-picture of data races,  a set
+        self.dataraces = set() # the full-picture of data races,  a set, only for each epoch
         
     def get_next_state(self, action):
         # this version, the action is to change a function on one position
+        # the draw back: this method exploration range is too small: e.g.,
         tid = action // (self.sequence_len * self.max_action) # for here, 0 or 1
         action -= tid * self.sequence_len * self.max_action
         position = action // self.max_action
@@ -54,23 +58,28 @@ class stealQueue(object):
         new_races = self.getReward_tasn() # this return is a key-value pair, key is the race id
         new_races = set(new_races.keys())
         reward = 0
-        diff = new_races - self.discovered_dataraces
+        diff = new_races - self.dataraces
         if len(diff) > 0:
             reward = len(diff) # newly found races are the reward
-            self.discovered_dataraces = self.discovered_dataraces.union(new_races) # update the discovered races
+            self.dataraces = self.dataraces.union(new_races) # update the discovered races
             self.step_in_vain = 0
         else:
-            # no new races detected, negative 
-            inverse_diff = self.discovered_dataraces - new_races
-            reward = -1 * len(inverse_diff)
+            # no new races detected
             self.step_in_vain += 1
+            #inverse_diff = self.dataraces - new_races
+            if len(new_races) == 0:
+                reward = -2 
+            else:
+                reward = 0
+            
 
         # detemine if this should end 
         end = False
-        if  self.step_in_vain == 10 or self.steps == self.max_step:
+        if  self.step_in_vain == self.sequence_len * 2 * 3 or self.steps == self.max_step:
             end = True
             self.steps = 0
             self.step_in_vain = 0
+            self.discovered_dataraces = self.discovered_dataraces.union(self.dataraces)
 
         return state_, reward, end
     
@@ -103,20 +112,20 @@ class stealQueue(object):
         flag = 0
         for line in warnings:
             words = list(filter(None, line.split(' ')))
-            if flag is 4:
+            if flag == 4:
                 key += words[2]
                 dataRace[key] = 1
                 key = ''
                 flag = 5
-            elif flag is 3:
+            elif flag == 3:
                 if preFlag in words:
                     key += words[1]
                     #print(words[1])
                     flag = 4
-            elif flag is 2:
+            elif flag == 2:
                 key += words[2]
                 flag = 3
-            elif flag is 1:
+            elif flag == 1:
                 key += words[0]
                 #key += words[5]
                 #print(words[0])
@@ -127,12 +136,12 @@ class stealQueue(object):
         return dataRace # this is a dict
       
     def reset(self) :
-        self.queue1 = [random.randint(0,1) for _ in range(self.sequence_len)]
-        self.queue2 = [random.randint(0,1) for _ in range(self.sequence_len)]
+        self.queue1 = [random.randint(0,self.max_action - 1) for _ in range(self.sequence_len)]
+        self.queue2 = [random.randint(0,self.max_action - 1) for _ in range(self.sequence_len)]
         self.steps = 0
         state = (self.queue1 + self.queue2)
         state_ = [item/self.max_action for item in state]
-        #self.discovered_dataraces = set()
+        self.dataraces = set()
         return state_
     """
     def getReward(self) :
